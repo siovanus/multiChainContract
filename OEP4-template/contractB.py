@@ -94,8 +94,8 @@ def Main(operation, args):
     if operation == 'unlock':
         if len(args) != 1:
             return False
-        args = args[0]
-        return unlock(args)
+        args0 = args[0]
+        return unlock(args0)
     raise Exception("method not supported")
 
 def init():
@@ -170,23 +170,25 @@ def transfer(from_acct,to_acct,amount):
         raise Exception("address length error")
     if CheckWitness(from_acct) == False or amount < 0:
         return False
+    assert(_transfer(from_acct, to_acct, amount))
+    return True
 
-    fromKey = concat(BALANCE_PREFIX,from_acct)
+def _transfer(_from, _to, _amount):
+    fromKey = concat(BALANCE_PREFIX,_from)
     fromBalance = Get(ctx,fromKey)
-    if amount > fromBalance:
+    if _amount > fromBalance:
         return False
-    if amount == fromBalance:
+    if _amount == fromBalance:
         Delete(ctx,fromKey)
     else:
-        Put(ctx,fromKey,fromBalance - amount)
-
-    toKey = concat(BALANCE_PREFIX,to_acct)
+        Put(ctx,fromKey,fromBalance - _amount)
+    toKey = concat(BALANCE_PREFIX,_to)
     toBalance = Get(ctx,toKey)
-    Put(ctx,toKey,toBalance + amount)
+    Put(ctx,toKey,toBalance + _amount)
 
     # Notify(["transfer", AddressToBase58(from_acct), AddressToBase58(to_acct), amount])
     # TransferEvent(AddressToBase58(from_acct), AddressToBase58(to_acct), amount)
-    TransferEvent(from_acct, to_acct, amount)
+    TransferEvent(_from, _to, _amount)
 
     return True
 
@@ -337,10 +339,8 @@ def unlock(args):
     amount = input_map["amount"]
         
     # unlock asset
-    res = transfer(CONTRACT_ADDRESS, address, amount)
-    if not res:
-        raise Exception("transfer failed.")
+    assert(_transfer(CONTRACT_ADDRESS, address, amount))
 
-    UnlockEvent(address, amount)  
+    UnlockEvent(args, 1)  
     
     return True
