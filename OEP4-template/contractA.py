@@ -196,6 +196,47 @@ def _transfer(_from, _to, _amount):
     return True
 
 
+def transferMulti(args):
+    """
+    :param args: the parameter is an array, containing element like [from, to, amount]
+    :return: True means success, False or raising exception means failure.
+    """
+    for p in args:
+        if len(p) != 3:
+            # return False is wrong
+            raise Exception("transferMulti params error.")
+        if transfer(p[0], p[1], p[2]) == False:
+            # return False is wrong since the previous transaction will be successful
+            raise Exception("transferMulti failed.")
+    return True
+
+
+def approve(owner,spender,amount):
+    """
+    owner allow spender to spend amount of token from owner account
+    Note here, the amount should be less than the balance of owner right now.
+    :param owner:
+    :param spender:
+    :param amount: amount>=0
+    :return: True means success, False or raising exception means failure.
+    """
+    if len(spender) != 20 or len(owner) != 20:
+        raise Exception("address length error")
+    if CheckWitness(owner) == False:
+        return False
+    if amount > balanceOf(owner) or amount < 0:
+        return False
+
+    key = concat(concat(APPROVE_PREFIX,owner),spender)
+    Put(ctx, key, amount)
+
+    # Notify(["approval", AddressToBase58(owner), AddressToBase58(spender), amount])
+    # ApprovalEvent(AddressToBase58(owner), AddressToBase58(spender), amount)
+    ApprovalEvent(owner, spender, amount)
+
+    return True
+
+
 def transferFrom(spender,from_acct,to_acct,amount):
     """
     spender spends amount of tokens on the behalf of from_acct, spender makes a transaction of amount of tokens
@@ -283,7 +324,6 @@ def lock(fee, to_chain_id, destination_contract, address, amount):
     LockEvent(fee, to_chain_id, destination_contract, address, amount)
     return True
     
-    
 def unlock(args):
     """
     lock some amount of tokens of this contract, call cross chain method to release to_amount of tokens of another chain's contract
@@ -301,7 +341,7 @@ def unlock(args):
     amount = input_map["amount"]
         
     # unlock asset
-    res = transfer(CONTRACT_ADDRESS, address, amount)
+    res = _transfer(CONTRACT_ADDRESS, address, amount)
     if not res:
         raise Exception("transfer failed.")
 
