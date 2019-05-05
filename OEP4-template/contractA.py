@@ -173,64 +173,25 @@ def transfer(from_acct,to_acct,amount):
         raise Exception("address length error")
     if CheckWitness(from_acct) == False or amount < 0:
         return False
+    assert(_transfer(from_acct, to_acct, amount))
+    return True
 
-    fromKey = concat(BALANCE_PREFIX,from_acct)
+def _transfer(_from, _to, _amount):
+    fromKey = concat(BALANCE_PREFIX,_from)
     fromBalance = Get(ctx,fromKey)
-    if amount > fromBalance:
+    if _amount > fromBalance:
         return False
-    if amount == fromBalance:
+    if _amount == fromBalance:
         Delete(ctx,fromKey)
     else:
-        Put(ctx,fromKey,fromBalance - amount)
-
-    toKey = concat(BALANCE_PREFIX,to_acct)
+        Put(ctx,fromKey,fromBalance - _amount)
+    toKey = concat(BALANCE_PREFIX,_to)
     toBalance = Get(ctx,toKey)
-    Put(ctx,toKey,toBalance + amount)
+    Put(ctx,toKey,toBalance + _amount)
 
     # Notify(["transfer", AddressToBase58(from_acct), AddressToBase58(to_acct), amount])
     # TransferEvent(AddressToBase58(from_acct), AddressToBase58(to_acct), amount)
-    TransferEvent(from_acct, to_acct, amount)
-
-    return True
-
-
-def transferMulti(args):
-    """
-    :param args: the parameter is an array, containing element like [from, to, amount]
-    :return: True means success, False or raising exception means failure.
-    """
-    for p in args:
-        if len(p) != 3:
-            # return False is wrong
-            raise Exception("transferMulti params error.")
-        if transfer(p[0], p[1], p[2]) == False:
-            # return False is wrong since the previous transaction will be successful
-            raise Exception("transferMulti failed.")
-    return True
-
-
-def approve(owner,spender,amount):
-    """
-    owner allow spender to spend amount of token from owner account
-    Note here, the amount should be less than the balance of owner right now.
-    :param owner:
-    :param spender:
-    :param amount: amount>=0
-    :return: True means success, False or raising exception means failure.
-    """
-    if len(spender) != 20 or len(owner) != 20:
-        raise Exception("address length error")
-    if CheckWitness(owner) == False:
-        return False
-    if amount > balanceOf(owner) or amount < 0:
-        return False
-
-    key = concat(concat(APPROVE_PREFIX,owner),spender)
-    Put(ctx, key, amount)
-
-    # Notify(["approval", AddressToBase58(owner), AddressToBase58(spender), amount])
-    # ApprovalEvent(AddressToBase58(owner), AddressToBase58(spender), amount)
-    ApprovalEvent(owner, spender, amount)
+    TransferEvent(_from, _to, _amount)
 
     return True
 
@@ -321,6 +282,7 @@ def lock(fee, to_chain_id, destination_contract, address, amount):
     
     LockEvent(fee, to_chain_id, destination_contract, address, amount)
     return True
+    
     
 def unlock(args):
     """
