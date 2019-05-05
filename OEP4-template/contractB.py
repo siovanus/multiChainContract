@@ -341,6 +341,6 @@ def unlock(args):
     # unlock asset
     assert(_transfer(CONTRACT_ADDRESS, address, amount))
 
-    UnlockEvent(args, 1)  
+    UnlockEvent(address, amount)  
     
     return True
