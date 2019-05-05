@@ -314,7 +314,7 @@ def lock(fee, to_chain_id, destination_contract, address, amount):
     }
     input_bytes = Serialize(input_map)
     param = state(fee, address, to_chain_id, destination_contract, "unlock", input_bytes)
-    res = Invoke(0, CROSS_CHAIN_CONTRACT_ADDRESS, "createCrossChainTx", [param])
+    res = Invoke(0, CROSS_CHAIN_CONTRACT_ADDRESS, "createCrossChainTx", param)
     if not res:
         raise Exception("call cross chain contract failed.")
     
