@@ -14,22 +14,19 @@ TransferEvent = RegisterAction("transfer", "from", "to", "amount")
 ApprovalEvent = RegisterAction("approval", "owner", "spender", "amount")
 LockEvent = RegisterAction("lock", "fee", "to_chain_id", "destination_contract", "address", "amount")
 UnlockEvent = RegisterAction("unlock", "address", "amount")
-SetdestinationEvent = RegisterAction("Setdestination","destination_contract")
 
 ctx = GetContext()
 CONTRACT_ADDRESS = GetExecutingScriptHash()
 CROSS_CHAIN_CONTRACT_ADDRESS = bytearray(b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x09')
 
-NAME = 'MyToken2'
-SYMBOL = 'MYT2'
+NAME = 'MyToken1'
+SYMBOL = 'MYT1'
 DECIMALS = 8
 FACTOR = 100000000
 TOTAL_AMOUNT = 1000000000
 BALANCE_PREFIX = bytearray(b'\x01')
 APPROVE_PREFIX = b'\x02'
 SUPPLY_KEY = 'TotalSupply'
-DESTINATION_CONTRACT = "Destination_contract"
-OWNER = Base58ToAddress("AMNuzSEyUW4PAddpNS14zZSvrVGYhzyf5D")
 
 def Main(operation, args):
     """
@@ -85,23 +82,19 @@ def Main(operation, args):
         spender = args[1]
         return allowance(owner,spender)
     if operation == 'lock':
-        if len(args) != 4:
+        if len(args) != 5:
             return False
         fee = args[0]
         to_chain_id = args[1]
-        address = args[2]
-        amount = args[3]
-        return lock(fee, to_chain_id, address, amount)
+        destination_contract = args[2]
+        address = args[3]
+        amount = args[4]
+        return lock(fee, to_chain_id, destination_contract, address, amount)
     if operation == 'unlock':
         if len(args) != 1:
             return False
         args0 = args[0]
         return unlock(args0)
-    if operation == "setdestination":
-        if len(args) != 1:
-            return False
-        args = args[0]
-        return setdestination(args)    
     raise Exception("method not supported")
 
 def init():
@@ -109,11 +102,8 @@ def init():
     initialize the contract, put some important info into the storage in the blockchain
     :return:
     """
-    if len(OWNER) != 20:
-        Notify(["Owner illegal!"])
-        return False
     if len(CONTRACT_ADDRESS) != 20:
-        Notify(["Owner illegal!"])
+        Notify(["CONTRACT_ADDRESS illegal!"])
         return False
     if Get(ctx,SUPPLY_KEY):
         Notify("Already initialized!")
@@ -296,7 +286,7 @@ def allowance(owner,spender):
     return Get(ctx,key)
     
     
-def lock(fee, to_chain_id, address, amount):
+def lock(fee, to_chain_id, destination_contract, address, amount):
     """
     lock some amount of tokens of this contract, call cross chain method to release to_amount of tokens of another chain's contract
     :param fee: miner fee of this cross chain tx
@@ -321,14 +311,11 @@ def lock(fee, to_chain_id, address, amount):
         "amount": amount
     }
     input_bytes = Serialize(input_map)
-    destination_contract = Get(ctx,DESTINATION_CONTRACT)
-    if destination_contract:
-        param = state(fee, address, to_chain_id, destination_contract, "unlock", input_bytes)
-        res = Invoke(0, CROSS_CHAIN_CONTRACT_ADDRESS, "createCrossChainTx", param)
-        if not res:
-            raise Exception("call cross chain contract failed.")
-    else:
-        raise Exception("destination contract can not be empty")
+
+    param = state(fee, address, to_chain_id, destination_contract, "unlock", input_bytes)
+    res = Invoke(0, CROSS_CHAIN_CONTRACT_ADDRESS, "createCrossChainTx", param)
+    if not res:
+        raise Exception("call cross chain contract failed.")
         
     LockEvent(fee, to_chain_id, destination_contract, address, amount)
     return True
@@ -353,17 +340,5 @@ def unlock(args):
     # unlock asset
     assert(_transfer(CONTRACT_ADDRESS, address, amount))
 
-    UnlockEvent(address, amount)  
-    
-    return True
-    
-def setdestination(destination_contract):
-    
-    assert(CheckWitness(OWNER))
-    
-    if len(destination_contract) !=20:
-        raise Exception("contract wrong parameter")
-        return False
-    Put(ctx,DESTINATION_CONTRACT,destination_contract)
-    
+    UnlockEvent(address, amount)
     return True
